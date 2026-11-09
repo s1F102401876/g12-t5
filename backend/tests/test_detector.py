@@ -23,3 +23,17 @@ class TestFallDetector:
         """カスタム信心度で初期化できることを確認"""
         detector = FallDetector(confidence=0.8)
         assert detector.confidence == 0.8
+
+    def test_draw_detections(self) -> None:
+        """検出結果が正しく描画されることを確認"""
+        detector = FallDetector()
+        frame = np.zeros((200, 200, 3), dtype=np.uint8)
+        detections = [
+            {"class_name": "Fallen", "confidence": 0.9, "bbox": [10, 10, 50, 50]},
+            {"class_name": "Standing", "confidence": 0.8, "bbox": [100, 100, 150, 150]},
+        ]
+        result = detector.draw_detections(frame, detections)
+        assert result.shape == frame.shape
+        # 描画された画像が元の画像と異なることを確認
+        assert not np.array_equal(result, frame)
+
