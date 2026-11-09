@@ -60,3 +60,35 @@ class FallDetector:
         else:
             self._model = YOLO(settings.MODEL_NAME)
         return self._model
+
+    def detect(self, frame: np.ndarray) -> list[dict[str, Any]]:
+        """フレームに対して転倒検出を実行する
+
+        Args:
+            frame: BGR形式の画像（NumPy配列）
+
+        Returns:
+            検出結果のリスト。各要素は以下のキーを含む:
+                - class_name: クラス名（"Fallen", "Sitting", "Standing"）
+                - confidence: 信心度
+                - bbox: バウンディングボックス [x1, y1, x2, y2]
+        """
+        model = self._load_model()
+        results = model(frame, conf=self.confidence, verbose=False)
+
+        detections: list[dict[str, Any]] = []
+        for result in results:
+            if result.boxes is None:
+                continue
+            for box in result.boxes:
+                cls_id = int(box.cls[0])
+                class_name = self.CLASS_NAMES.get(cls_id, f"class_{cls_id}")
+                confidence = float(box.conf[0])
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                detections.append({
+                    "class_name": class_name,
+                    "confidence": confidence,
+                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                })
+
+        return detections
