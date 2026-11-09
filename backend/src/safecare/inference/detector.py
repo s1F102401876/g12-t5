@@ -92,3 +92,31 @@ class FallDetector:
                 })
 
         return detections
+
+    def draw_detections(self, frame: np.ndarray, detections: list[dict[str, Any]]) -> np.ndarray:
+        """検出結果をフレームに描画する
+
+        Args:
+            frame: BGR形式の画像
+            detections: detect()の戻り値
+
+        Returns:
+            描画済み画像
+        """
+        annotated = frame.copy()
+        for det in detections:
+            x1, y1, x2, y2 = det["bbox"]
+            label = f"{det['class_name']} {det['confidence']:.2f}"
+
+            # Fallenは赤、Sittingは黄、Standingは緑
+            if det["class_name"] == "Fallen":
+                color = (0, 0, 255)
+            elif det["class_name"] == "Sitting":
+                color = (0, 255, 255)
+            else:
+                color = (0, 255, 0)
+
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(annotated, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+        return annotated
