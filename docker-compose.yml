@@ -1,0 +1,91 @@
+# SafeCare-AI Docker Compose
+# 開発環境と本番環境の両方で使用可能
+
+version: '3.8'
+
+services:
+  # バックエンドサービス
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: safecare-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # モデルファイルのマウント
+      - ./backend/models:/app/models:ro
+      # データベースの永続化
+      - safecare-data:/app/data
+      # カメラデバイスのマウント（必要に応じて）
+      # - /dev/video0:/dev/video0
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - MODEL_NAME=melihuzunoglu/human-fall-detection
+      - CONFIDENCE_THRESHOLD=0.5
+      - BUFFER_SIZE=10
+      - FALL_THRESHOLD=7
+      - DATABASE_PATH=/app/data/safecare.db
+    restart: unless-stopped
+    networks:
+      - safecare-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  # フロントエンドサービス
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: safecare-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - safecare-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  # Nginxリバースプロキシ（本番環境用）
+  nginx:
+    image: nginx:alpine
+    container_name: safecare-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - safecare-network
+    profiles:
+      - production
+
+# ボリューム定義
+volumes:
+  safecare-data:
+    driver: local
+
+# ネットワーク定義
+networks:
+  safecare-network:
+    driver: bridge
