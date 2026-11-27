@@ -49,3 +49,35 @@ class TestFrameBuffer:
         buf.add("Sitting")
         buf.add("Standing")
         assert buf.get_dominant_class() == "Standing"
+
+    def test_buffer_overflow(self) -> None:
+        """バッファサイズを超えた場合に古いデータが消えることを確認"""
+        buf = FrameBuffer(size=3, threshold=2)
+        buf.add("Standing")
+        buf.add("Standing")
+        buf.add("Fallen")
+        buf.add("Fallen")  # 最古のStandingが消れる -> [Standing, Fallen, Fallen]
+        stats = buf.get_stats()
+        assert stats["total_frames"] == 3
+        assert stats["counts"]["Fallen"] == 2
+        assert stats["counts"]["Standing"] == 1
+
+    def test_clear(self) -> None:
+        """clear()でバッファがクリアされることを確認"""
+        buf = FrameBuffer(size=5, threshold=3)
+        buf.add("Fallen")
+        buf.add("Fallen")
+        buf.clear()
+        assert buf.get_dominant_class() is None
+        assert buf.should_alert() is False
+
+    def test_get_stats(self) -> None:
+        """get_stats()が正しい統計情報を返すことを確認"""
+        buf = FrameBuffer(size=5, threshold=3)
+        buf.add("Fallen")
+        buf.add("Standing")
+        buf.add("Sitting")
+        stats = buf.get_stats()
+        assert stats["total_frames"] == 3
+        assert stats["fall_count"] == 1
+        assert stats["should_alert"] is False
