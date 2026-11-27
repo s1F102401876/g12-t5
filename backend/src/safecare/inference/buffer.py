@@ -63,6 +63,27 @@ class FrameBuffer:
 
         return max(counts, key=lambda k: counts[k])
 
+    def get_stats(self) -> dict[str, Any]:
+        """バッファの統計情報を返す
+
+        Returns:
+            各クラスの検出回数と合計フレーム数
+        """
+        counts: dict[str, int] = {}
+        for cls in self._buffer:
+            counts[cls] = counts.get(cls, 0) + 1
+
+        return {
+            "total_frames": len(self._buffer),
+            "counts": counts,
+            "fall_count": counts.get("Fallen", 0),
+            "should_alert": self.should_alert(),
+        }
+
+    def clear(self) -> None:
+        """バッファをクリアする"""
+        self._buffer.clear()
+
     @property
     def is_ready(self) -> bool:
         """バッファが満杯かどうかを返す"""
